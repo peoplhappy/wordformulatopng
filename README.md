@@ -13,3 +13,38 @@ word中所有公式转为图片
 5）table处理较为特别，table是不会存在于p标签中，而是与p标签并列，遇到table标签后，获取tr和td的数量并创建table，通过循环遍历方式获取cell，
 再cell中通过添加paragraph来插入内容或图片（处理与上述一致）
 
+C# code：
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.IO;
+using System.Xml;
+
+namespace Project1
+{
+    class Class2
+    {
+        static void Main(string[] args)
+         {
+             String FileName = args[0];
+             using (System.Drawing.Imaging.Metafile img = new System.Drawing.Imaging.Metafile(FileName))
+             {
+                 System.Drawing.Imaging.MetafileHeader header = img.GetMetafileHeader();
+                 float scale = header.DpiX / 96f;
+                 using (System.Drawing.Bitmap bitmap = new System.Drawing.Bitmap((int)(scale * img.Width / header.DpiX * 100), (int)(scale * img.Height / header.DpiY * 100)))
+                 {
+                     using (System.Drawing.Graphics g = System.Drawing.Graphics.FromImage(bitmap))
+                     {
+                         g.Clear(System.Drawing.Color.White);
+                         g.ScaleTransform(scale, scale);
+                         g.DrawImage(img, 0, 0);
+                     }
+                     bitmap.Save(@args[1], System.Drawing.Imaging.ImageFormat.Png);
+                 }
+             }
+             Console.WriteLine("转换完成");
+         }
+    }
+}
