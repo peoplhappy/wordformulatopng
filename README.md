@@ -1,0 +1,15 @@
+# wordimage
+word中所有公式转为图片
+
+转换思路：
+1.先将docx文件转未html，其中公式或者图片按照base64编码直接写入html中（因如果不使用此种方式，直接通过pydocx提取图片数量可能会小于实际含有的图片数量
+导致转换失败）
+2.提取html中的所有img标签的内容，将src重新写入文件中，调用c#程序直接转为png后转成base64编码，替换会html中
+3.将html转化为docx文件，就是最后的结果了，pydocx转换的html有如下规律
+1）所有内容都在body中
+2）paragraph对应为p标签，遇到直接再新建的文档中添加paragraph即可
+3）所有文字以run类型直接添加到paragraph
+4）遇到图片直接再run中添加图片即可，注意大小，大小的计算方式（获取html中的width和height，并除以80转为Inches就是较合适的大小）
+5）table处理较为特别，table是不会存在与p标签中，而是与p标签并列，遇到table标签后，获取tr和td的数量并创建table，通过循环遍历方式获取cell，
+再cell中通过添加paragraph来插入内容或图片（处理与上述一致）
+
