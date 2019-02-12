@@ -18,11 +18,14 @@ from docx.shared import Inches
 temppath=os.getcwd()+os.path.sep+"temp"
 def handle_tag(tag,parent,photo_base_path):
     if type(tag) == bs4.element.NavigableString:
-        content=tag.replace("\n", "")
-        if content=="":
+        content = tag.replace("\n", "").strip()
+        if content == "":
             pass
         else:
-            parent.add_run(content)
+            run = parent.add_run()
+            if tag.parent.name == "sub":
+                run.font.subscript = True
+            run.add_text(content)
     elif type(tag)==bs4.element.Tag:
         if tag.name == "p":
             p = parent.add_paragraph()
@@ -59,32 +62,56 @@ def handle_tag(tag,parent,photo_base_path):
                             handle_tag(child, p,photo_base_path)
                         startcolumnindex=startcolumnindex+1
                     startrowindex=startrowindex+1
+        elif tag.name=="em":
+            run=parent.add_run()
+            if tag.parent.name=="sub":
+                run.font.subscript=True
+            else:
+                run.font.subscript = False
+            run.add_text(tag.string.replace("\n", "").strip())
+        elif tag.name=="sub":
+            for child in tag.contents:
+                handle_tag(child,parent,photo_base_path)
+        elif tag.name=="ol":
+            parent=parent.add_paragraph()
+            idx=0
+            for child in tag.contents:
+                if child.name=="li":
+                    text=chr(idx+65)+"."+child.string.replace("\n", "").strip()+"\n"
+                    parent.add_run(text)
+                    idx=idx+1
         else:
             pass
 
 def main():
-    name=os.path.basename(config.filepath)
-    temp_photo_path=temppath+os.path.sep+name.replace(".docx","")+os.path.sep
-    if not os.path.exists(temp_photo_path):
-        os.makedirs(temp_photo_path)
-    # 使用pydocx转化为html
-    html = PyDocX.to_html(config.filepath)
-    bsoup = bs4.BeautifulSoup(html, "lxml")
-    imglist = bsoup.find_all("img")
-    for img in imglist:
-        #将html中的图片保存并转换后存入html中
-        img["src"],path=savephoto(img["src"], temp_photo_path)
-    with open(temp_photo_path + name.replace(".docx", ".html"), "w", encoding="utf-8") as file:
-        file.write(bsoup.prettify())
-    #将html转为docx
-    #获取所有p标签
-    dstpath=temp_photo_path + name
-    newdoc=docx.Document(os.getcwd()+os.path.sep+"docx/templates/default.docx")
-    bodycontent = bsoup.find("body")
-    bodychild = bodycontent.contents
-    for child in bodychild:
-        handle_tag(child, newdoc,temp_photo_path)
-    newdoc.save(dstpath)
+    #修改为遍历时操作
+    filelist=os.listdir(config.filepath)
+    for file in filelist:
+        if file.endswith(".docx"):
+            print("start to solve ",file)
+            filepath=config.filepath+"/"+file
+            name=os.path.basename(filepath)
+            temp_photo_path=temppath+os.path.sep+name.replace(".docx","")+os.path.sep
+            if not os.path.exists(temp_photo_path):
+                os.makedirs(temp_photo_path)
+            # 使用pydocx转化为html
+            html = PyDocX.to_html(filepath)
+            bsoup = bs4.BeautifulSoup(html, "lxml")
+            imglist = bsoup.find_all("img")
+            for img in imglist:
+                #将html中的图片保存并转换后存入html中
+                img["src"],path=savephoto(img["src"], temp_photo_path)
+            with open(temp_photo_path + name.replace(".docx", ".html"), "w", encoding="utf-8") as file:
+                file.write(bsoup.prettify())
+            #将html转为docx
+            #获取所有p标签
+            dstpath=temp_photo_path + name
+            newdoc=docx.Document(os.getcwd()+os.path.sep+"docx/templates/default.docx")
+            bodycontent = bsoup.find("body")
+            bodychild = bodycontent.contents
+            for child in bodychild:
+                handle_tag(child, newdoc,temp_photo_path)
+            newdoc.save(dstpath)
 def savefile(data,path):
     with open(path, "wb") as file:
         file.write(data)
