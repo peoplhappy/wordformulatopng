@@ -3,6 +3,7 @@ import docx
 from PIL import Image
 from docx.shared import Inches
 import base64
+import config
 import re
 
 
@@ -25,7 +26,7 @@ def savephoto(base64data,basepath):
     savefile(base64.b64decode(searchresult[2]), srcpath)
     return searchresult[1]
 
-def handle_tag(tag,parent):
+def handle_tag(tag,parent,starttext=None):
     print("tag:",tag.name)
     if type(tag) == bs4.element.NavigableString:
         content=tag.replace("\n", "").strip()
@@ -35,6 +36,8 @@ def handle_tag(tag,parent):
             run=parent.add_run()
             if tag.parent.name=="sub":
                 run.font.subscript=True
+            if starttext:
+                content=starttext+"."+content+"\r\n"
             run.add_text(content)
     elif type(tag)==bs4.element.Tag:
         if tag.name == "p":
@@ -85,16 +88,21 @@ def handle_tag(tag,parent):
         elif tag.name=="ol":
             parent=parent.add_paragraph()
             idx=0
+            if "class" in tag.attrs:
+                stylename=tag.attrs["class"][0]
             for child in tag.contents:
                 if child.name=="li":
-                    text=chr(idx+65)+"."+child.string.replace("\n", "").strip()+"\n"
-                    parent.add_run(text)
-                    idx=idx+1
+                    if stylename:
+                       if config.stylelist[stylename]["start"]:
+                           starttext=config.stylelist[stylename]["increase"](config.stylelist[stylename]["start"],idx)
+                           idx=idx+1
+                    for cld in child:
+                        handle_tag(cld,parent,starttext)
+
         else:
             pass
 
 if __name__=="__main__":
-
     newdoc = docx.Document()
     bsoup = bs4.BeautifulSoup(open(path, "r", encoding="utf-8"), "lxml")
     bodycontent = bsoup.find("body")

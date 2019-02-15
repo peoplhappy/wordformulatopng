@@ -16,15 +16,17 @@ import base64
 import re
 from docx.shared import Inches
 temppath=os.getcwd()+os.path.sep+"temp"
-def handle_tag(tag,parent,photo_base_path):
+def handle_tag(tag,parent,photo_base_path,starttext=None):
     if type(tag) == bs4.element.NavigableString:
         content = tag.replace("\n", "").strip()
         if content == "":
             pass
         else:
             run = parent.add_run()
-            if tag.parent.name == "sub":
-                run.font.subscript = True
+            if tag.parent.name=="sub":
+                run.font.subscript=True
+            if starttext:
+                content=starttext+"."+content+"\r\n"
             run.add_text(content)
     elif type(tag)==bs4.element.Tag:
         if tag.name == "p":
@@ -68,18 +70,29 @@ def handle_tag(tag,parent,photo_base_path):
                 run.font.subscript=True
             else:
                 run.font.subscript = False
-            run.add_text(tag.string.replace("\n", "").strip())
+            run.add_text(tag.text.replace("\n", "").strip())
         elif tag.name=="sub":
             for child in tag.contents:
                 handle_tag(child,parent,photo_base_path)
         elif tag.name=="ol":
-            parent=parent.add_paragraph()
-            idx=0
+            parent = parent.add_paragraph()
+            idx = 0
+            if "class" in tag.attrs:
+                stylename = tag.attrs["class"][0]
             for child in tag.contents:
-                if child.name=="li":
-                    text=chr(idx+65)+"."+child.string.replace("\n", "").strip()+"\n"
-                    parent.add_run(text)
-                    idx=idx+1
+                if child.name == "li":
+                    if stylename:
+                        if config.stylelist[stylename]["start"]:
+                            starttext = config.stylelist[stylename]["increase"](config.stylelist[stylename]["start"],idx)
+                    idx = idx + 1
+                    idex=0
+                    for cld in child:
+                        if idex==0:
+                           handle_tag(cld, parent,photo_base_path, starttext=starttext)
+                        else:
+                           handle_tag(cld, parent,photo_base_path)
+                        idex=idex+1
+
         else:
             pass
 
